@@ -2,8 +2,8 @@
 #include <SdsDustSensor.h>
 
 /* SDS011 Dust Sensor */
-const int SDS_RX_PIN = 0; // D3 -> SDS011 TX pin
-const int SDS_TX_PIN = 2; // D4 -> SDS011 TX pin
+const int SDS_RX_PIN = D5; // D3 -> SDS011 TX pin
+const int SDS_TX_PIN = D6; // D4 -> SDS011 TX pin
 SoftwareSerial softwareSerial(SDS_RX_PIN, SDS_TX_PIN);
 SdsDustSensor sds(softwareSerial); //  additional parameters: retryDelayMs and maxRetriesNotAvailable
 const int MINUTE = 60000;
@@ -46,4 +46,34 @@ Serial.println("Problem with sleeping the SDS011 sensor.");
 Serial.println("SDS011 sensor is sleeping");
 delay(MEASUREMENT_INTERVAL);
 }
+}
+
+
+
+
+// SDS011 dust sensor example
+// -----------------------------
+//
+// By R. Zschiegner (rz@madavi.de).
+// April 2016
+
+#include <SDS011.h>
+
+float p10,p25;
+int error;
+
+SDS011 my_sds;
+
+void setup() {
+	my_sds.begin(2,14);//tx,rx)
+	Serial.begin(9600);
+}
+
+void loop() {
+	error = my_sds.read(&p25,&p10);
+	if (! error) {
+		Serial.println("P2.5: "+String(p25));
+		Serial.println("P10:  "+String(p10));
+	}
+	delay(100);
 }
