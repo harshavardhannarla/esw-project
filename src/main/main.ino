@@ -1,11 +1,24 @@
+#include <DHT.h>
 #include <Adafruit_BME280.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 #include <Adafruit_SGP30.h>
 
 #include <SDS011.h>
-#include <SoftwareSerial.h>
-SoftwareSerial SerialCom(D5, D6); // RX, TX
+// #include <SoftwareSerial.h>
+#include <ESP8266WiFi.h>
+#include "ThingSpeak.h"
+
+WiFiClient client;
+unsigned long myChannelNumber = 1519907;
+const char * myWriteAPIKey = "F2YBHTZO9IZP34OO";
+
+
+
+char * ssid  = "NANDU 3 FLOOR B";
+char * password  = "9666699977";
+
+SoftwareSerial SerialCom(D3, D4); // RX, TX
 
 
 #define SDS_RX_PIN D5
@@ -19,25 +32,36 @@ Adafruit_BME280 bme; // I2C
 Adafruit_SGP30 sgp;
 
 
-float p10,p25,temp,hum;
-int delay_time=15000;
+float pm10,pm25,temp,hum,tvoc,eco2,h2,ethanol,co2;
+int delay_time=60000;
+
+#define DHTPIN 13 
+#define DHTTYPE DHT22
+
+DHT dht(DHTPIN, DHTTYPE);
 
 
 void initsds()
-{my_sds.begin(D5,D6);//rx,tx
+{
+  my_sds.begin(D5,D6);//rx,tx
 
 }
 
 void sdsout(){
-    int sds_val = my_sds.read(&p25,&p10);
+    int sds_val = my_sds.read(&pm25,&pm10);
 	if (! sds_val) {
-		Serial.println("P2.5: "+String(p25));
-		Serial.println("P10:  "+String(p10));
+    
+		Serial.println("P2.5: "+String(pm25));
+		Serial.println("P10:  "+String(pm10));
 	}
+  else{
+    pm25=-1;pm10=-1;
+    Serial.println("Sds Not working");
+  }
 }
 
 void initbme()
-{ unsigned  status = bme.begin(0x77);  
+{   unsigned  status = bme.begin(0x77);  
     // You can also pass in a Wire library object like &Wire2
     // status = bme.begin(0x76, &Wire2)
     if (!status) {
@@ -69,27 +93,34 @@ void initsgp30()
 }
 int counter = 0;
 void sgpout(){
-     // If you have a temperature / humidity sensor, you can set the absolute humidity to enable the humditiy compensation for the air quality signals
+  
+  // If you have a temperature / humidity sensor, you can set the absolute humidity to enable the humditiy compensation for the air quality signals
   //float temperature = 22.1; // [°C]
   //float humidity = 45.2; // [%RH]
   //sgp.setHumidity(getAbsoluteHumidity(temperature, humidity));
 
   if (! sgp.IAQmeasure()) {
     Serial.println("Measurement failed");
+    tvoc=-1;eco2=-1;
     return;
   }
-  Serial.print("TVOC "); Serial.print(sgp.TVOC); Serial.print(" ppb\t");
-  Serial.print("eCO2 "); Serial.print(sgp.eCO2); Serial.println(" ppm");
+  tvoc=sgp.TVOC;
+  eco2=sgp.eCO2;
+  Serial.print("TVOC "); Serial.print(tvoc); Serial.print(" ppb\t");
+  Serial.print("eCO2 "); Serial.print(eco2); Serial.println(" ppm");
 
   if (! sgp.IAQmeasureRaw()) {
     Serial.println("Raw Measurement failed");
+    h2=-1;ethanol=-1;
     return;
   }
+  h2=sgp.rawH2;
+  ethanol=sgp.rawEthanol;
   Serial.print("Raw H2 "); Serial.print(sgp.rawH2); Serial.print(" \t");
   Serial.print("Raw Ethanol "); Serial.print(sgp.rawEthanol); Serial.println("");
  
 
-  counter++;
+  /* counter++;
   if (counter == 30) {
     counter = 0;
 
@@ -100,7 +131,7 @@ void sgpout(){
     }
     Serial.print("****Baseline values: eCO2: 0x"); Serial.print(eCO2_base, HEX);
     Serial.print(" & TVOC: 0x"); Serial.println(TVOC_base, HEX);
-  }
+  }*/
 }
 
 void bmeout(){
@@ -149,11 +180,46 @@ void mhz14out(){
   int resLow  = (int) dataValue[3];
   int ppm_uart = (resHigh*256)+resLow;
 
+co2=ppm_uart;
 Serial.print(ppm_uart);
+Serial.println("ppm");
 
 }
 
+void initdht22(){
+  dht.begin();
+}
 
+void dht22out(){
+    float h = dht.readHumidity();
+    float t = dht.readTemperature();
+  
+
+  
+  if (isnan(h) || isnan(t)) {
+    Serial.println(F("Failed to read from DHT sensor!"));
+    hum=-1;temp=-1;
+    return;
+  }
+
+  // Compute heat index in Fahrenheit (the default)
+  //float hif = dht.computeHeatIndex(f, h);
+  // Compute heat index in Celsius (isFahreheit = false)
+  //float hic = dht.computeHeatIndex(t, h, false);
+
+  hum=h;temp=t;
+  Serial.print(F("Humidity: "));
+  Serial.print(h);
+  Serial.print(F("%  Temperature: "));
+  Serial.print(t);
+  Serial.print(F("°C "));
+ // Serial.print(f);
+  //Serial.print(F("°F  Heat index: "));
+  //Serial.print(hic);
+  //Serial.print(F("°C "));
+  //Serial.print(hif);
+  //Serial.println(F("°F"));
+}
 
 
 
@@ -161,78 +227,72 @@ Serial.print(ppm_uart);
 void setup() {
 	pinMode(D0,OUTPUT);
  
-	//initsds();
+	
 	Serial.begin(115200);
+  
+// WiFi.mode(WIFI_STA); 
+ 
 
-	//initbme();
-	//initsgp30();
+ ThingSpeak.begin(client);
+	// initbme();
+ 
+ initsds();
+initsgp30();
   initmhz14();
+  initdht22();
 }
 
 void loop() {
+   
+     if(WiFi.status() != WL_CONNECTED){
+    Serial.print("Attempting to connect to SSID: ");
+    Serial.println(ssid);
+      WiFi.begin(ssid, password);  // Connect to WPA/WPA2 network. Change this line if using open or WEP network
+
+    while(WiFi.status() != WL_CONNECTED){
+      Serial.print(".");
+      delay(5000);     
+    } 
+    Serial.println("\nConnected.");
+  }
+  
 	digitalWrite(D0,HIGH);
 	delay(1000);
 	digitalWrite(D0,LOW);
 
-  //sgpout();
+  
+  
+  dht22out();
+  Serial.println();
+
+   sdsout();
+  Serial.println();
+
+
+  sgpout();
+  Serial.println();
+
   mhz14out();
+  Serial.println(); 
+  
+  
+  ThingSpeak.setField(1,temp);
+  ThingSpeak.setField(2,hum);
+  ThingSpeak.setField(3,pm25);
+  ThingSpeak.setField(4,pm10);
+  ThingSpeak.setField(5, co2);
+  ThingSpeak.setField(6,tvoc);
+  ThingSpeak.setField(7,eco2);
+  ThingSpeak.setField(8,h2);
 
-
+  int st= ThingSpeak.writeFields(myChannelNumber,myWriteAPIKey);
+  if(st == 200){
+    Serial.println("Channel update successful.");
+  }
+  else{
+    Serial.println("Problem updating channel. HTTP error code " + String(st));
+  }
   
 	delay(delay_time); //thingspeak limit
   
-} 
-
-
-
-
-/***************************************************************************
-  This is a library for the BME280 humidity, temperature & pressure sensor
-  Designed specifically to work with the Adafruit BME280 Breakout
-  ----> http://www.adafruit.com/products/2650
-  These sensors use I2C or SPI to communicate, 2 or 4 pins are required
-  to interface. The device's I2C address is either 0x76 or 0x77.
-  Adafruit invests time and resources providing this open source code,
-  please support Adafruit andopen-source hardware by purchasing products
-  from Adafruit!
-  Written by Limor Fried & Kevin Townsend for Adafruit Industries.
-  BSD license, all text above must be included in any redistribution
-  See the LICENSE file for details.
- ***************************************************************************/
-
-/* #include <Wire.h>
-#include <SPI.h>
-
-
-#define BME_SCK 13
-#define BME_MISO 12
-#define BME_MOSI 11
-#define BME_CS 10
-
-
-//Adafruit_BME280 bme(BME_CS); // hardware SPI
-//Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
-
-
-
-void setup() {
-    Serial.begin(9600);
-    while(!Serial);    // time to get serial running
-    Serial.println(F("BME280 test"));
-
-    unsigned status;
-    
-    // default settings
-    
 }
-
-
-void loop() { 
-    printValues();
-    delay(delayTime);
-}
-
-
-void printValues() {
-    
-} */
