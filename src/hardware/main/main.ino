@@ -15,7 +15,7 @@ const char * myWriteAPIKey = "F2YBHTZO9IZP34OO";
 
 
 
-char * ssid  = "NANDU 3 FLOOR B";
+char * ssid  = "NANDU 3RD FLOOR-B-4G";
 char * password  = "9666699977";
 
 SoftwareSerial SerialCom(D3, D4); // RX, TX
@@ -35,7 +35,7 @@ Adafruit_SGP30 sgp;
 float pm10,pm25,temp,hum,tvoc,eco2,h2,ethanol,co2;
 int delay_time=60000;
 
-#define DHTPIN 13 
+#define DHTPIN 10
 #define DHTTYPE DHT22
 
 DHT dht(DHTPIN, DHTTYPE);
@@ -49,11 +49,11 @@ void initsds()
 
 void sdsout(){
     int sds_val = my_sds.read(&pm25,&pm10);
-	if (! sds_val) {
+  if (! sds_val) {
     
-		Serial.println("P2.5: "+String(pm25));
-		Serial.println("P10:  "+String(pm10));
-	}
+    Serial.println("P2.5: "+String(pm25));
+    Serial.println("P10:  "+String(pm10));
+  }
   else{
     pm25=-1;pm10=-1;
     Serial.println("Sds Not working");
@@ -78,7 +78,7 @@ void initbme()
 
 
     Serial.println();
-	
+  
 }
 
 void initsgp30()
@@ -135,7 +135,7 @@ void sgpout(){
 }
 
 void bmeout(){
-    	Serial.print("Temperature = ");
+      Serial.print("Temperature = ");
     Serial.print(bme.readTemperature());
     Serial.println(" °C");
 
@@ -153,7 +153,7 @@ void bmeout(){
     Serial.println(" %");
 
     Serial.println();  
-	
+  
 }
 
 void initmhz14(){
@@ -225,16 +225,16 @@ void dht22out(){
 
 
 void setup() {
-	pinMode(D0,OUTPUT);
+  pinMode(D0,OUTPUT);
  
-	
-	Serial.begin(115200);
+  Serial.println("started");
+  Serial.begin(115200);
   
 // WiFi.mode(WIFI_STA); 
  
 
  ThingSpeak.begin(client);
-	// initbme();
+  // initbme();
  
  initsds();
 initsgp30();
@@ -256,9 +256,9 @@ void loop() {
     Serial.println("\nConnected.");
   }
   
-	digitalWrite(D0,HIGH);
-	delay(1000);
-	digitalWrite(D0,LOW);
+  digitalWrite(D0,HIGH);
+  delay(1000);
+  digitalWrite(D0,LOW);
 
   
   
@@ -293,6 +293,6 @@ void loop() {
     Serial.println("Problem updating channel. HTTP error code " + String(st));
   }
   
-	delay(delay_time); //thingspeak limit
+  delay(delay_time); //thingspeak limit
   
 }
