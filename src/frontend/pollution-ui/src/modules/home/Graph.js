@@ -1,4 +1,4 @@
-import react, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Container from "@mui/material/Container";
 import { Line } from "react-chartjs-2";
 
@@ -22,7 +22,6 @@ const colorData = [
 ];
 
 const dummyData = {
-  labels: ["1", "2", "3", "4", "5", "6"],
   datasets: [
     {
       label: "# of Votes",
@@ -37,6 +36,14 @@ const options = {
     y: {
       beginAtZero: true,
     },
+    xAxes: [
+      {
+        type: "time",
+        time: {
+          unit: "minute",
+        },
+      },
+    ],
   },
 };
 
@@ -53,7 +60,6 @@ const choices = [
 
 export default function Graph(props) {
   const [allData, setAllData] = useState(dummyData);
-  const [avgData, setAvgData] = useState({});
   const [flag, setFlag] = useState(false);
 
   const [option, setOption] = useState(choices[0]);
@@ -64,12 +70,11 @@ export default function Graph(props) {
       typeof props.allData.co2 !== "undefined" &&
       typeof props.avgData.co2 !== "undefined"
     ) {
-      const labels = Array(props.allData[option].length)
-        .fill(0)
-        .map((_, i) => i.toString());
       const reqData = {
         ...dummyData,
-        labels: labels,
+        labels: props.allData["created_at"].map((e) =>
+          new Date(e).toUTCString()
+        ),
         datasets: [
           {
             ...colorData[0],
@@ -92,13 +97,10 @@ export default function Graph(props) {
   });
 
   const handleRadio = (event) => {
-    const labels = Array(props.allData[option].length)
-      .fill(0)
-      .map((_, i) => i.toString());
     setOption(event.target.value);
     const reqData = {
       ...dummyData,
-      labels: labels,
+      labels: props.allData["created_at"].map((e) => new Date(e).toUTCString()),
       datasets: [
         {
           ...colorData[0],
