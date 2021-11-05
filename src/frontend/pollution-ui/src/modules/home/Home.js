@@ -1,14 +1,15 @@
-import react, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Container from "@mui/material/Container";
 
 import Table from "./Table";
 import Graph from "./Graph";
 
-import { allData, avgData, predictionData } from "../../utils/nodeData.js";
+import { allData, avgData, attrData } from "../../utils/nodeData.js";
 
 export default function CustomPaginationActionsTable() {
   const [data, setData] = useState({});
   const [averageData, setAverageData] = useState({});
+  const [attributeData, setAttributeData] = useState({});
   const [tempFlag, setTempFlag] = useState(false);
 
   useEffect(() => {
@@ -19,6 +20,8 @@ export default function CustomPaginationActionsTable() {
         setData(table);
         const averageTable = await avgData(channelId);
         setAverageData(averageTable);
+        const attrTable = await attrData(channelId);
+        setAttributeData(attrTable);
         setTempFlag(true);
       }
       fetchData();
@@ -26,12 +29,8 @@ export default function CustomPaginationActionsTable() {
   });
   return (
     <Container fixWidth>
-      <Table allData={data} avgData={averageData} />
-      <Graph
-        allData={data}
-        avgData={averageData}
-        predictionData={predictionData}
-      />
+      <Graph allData={data} avgData={averageData} />
+      <Table attributeData={attributeData} />
     </Container>
   );
 }

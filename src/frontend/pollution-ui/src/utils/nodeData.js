@@ -5,11 +5,6 @@ async function predictionData(channelId) {
 }
 
 async function allData(channelId) {
-  // object of arrays.
-  // created_at must be epoch values in milliseconds.
-  // To convert to date object:
-  // myDate = new Date(epoch_in_milliseconds);
-  // console.log(myDate.toLocaleString());
   let table = {
     created_at: [1636099952084, 1636099952089, 1636099952094],
     temperature: [20, 25, 24],
@@ -35,4 +30,18 @@ async function avgData(channelId) {
   return averageValues;
 }
 
-export { allData, avgData, predictionData };
+async function attrData(channelId) {
+  const attributes = {
+    temperature: { average: [1, 0], max: [1, 0], min: [0, 1] },
+    humidity: { average: [1, 0], max: [1, 0], min: [0, 1] },
+    pm2: { average: [1, 0], max: [1, 0], min: [0, 1] },
+    pm10: { average: [1, 0], max: [1, 0], min: [0, 1] },
+    co2: { average: [1, 0], max: [1, 0], min: [0, 1] },
+    tvoc: { average: [1, 0], max: [1, 0], min: [0, 1] },
+    eco2: { average: [1, 0], max: [1, 0], min: [0, 1] },
+    h2: { average: [1, 0], max: [1, 0], min: [0, 1] },
+  };
+  return attributes;
+}
+
+export { allData, avgData, predictionData, attrData };
