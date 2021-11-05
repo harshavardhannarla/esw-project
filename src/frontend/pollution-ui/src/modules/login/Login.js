@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import axios from "axios";
 import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
 import TextField from "@mui/material/TextField";
@@ -9,6 +8,8 @@ import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useHistory } from "react-router-dom";
 
+import { login } from "../../utils/login.js";
+
 const theme = createTheme();
 
 const Login = () => {
@@ -17,9 +18,7 @@ const Login = () => {
 
   async function pushData() {
     try {
-      let res = await axios.post("/user/login", {
-        channelId: channelId,
-      });
+      let res = await login(channelId);
       if (res.data.success) {
         localStorage.setItem("channelId", channelId);
         setChannelId("");

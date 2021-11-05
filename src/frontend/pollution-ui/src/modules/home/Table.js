@@ -1,8 +1,6 @@
 import * as React from "react";
 import Container from "@mui/material/Container";
 
-import { allData, avgData } from "../../utils/nodeData";
-
-export default function Table() {
+export default function Table({ allData, avgData }) {
   return <Container fixWidth></Container>;
 }
