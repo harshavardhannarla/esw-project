@@ -4,9 +4,15 @@ const router = express.Router();
 const Record = require('../models/Record');
 
 router.get('/',async(req,res)=>{
-    try{ console.log(new Date(req.query.start), req.query.end);
-    Record.find({'time':{$gte: new Date(req.query.start),$lte: new Date(req.query.end)}})
-           .then(recs => res.json(recs));
+    try{ console.log(new Date(req.query.start),new Date( req.query.end));
+    Record.find({
+        'time':{ 
+            $gte: new Date(req.query.start),
+            $lte: new Date(req.query.end)
+        },
+    
+        })
+        .then(recs => res.json(recs));
     }
     catch(e){
         res.status(400).json({msg:e.message});
