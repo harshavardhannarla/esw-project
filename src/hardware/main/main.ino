@@ -1,25 +1,21 @@
 #include <ArduinoJson.h>
-
 #include <DHT.h>
 #include <Adafruit_BME280.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 #include <Adafruit_SGP30.h>
-
 #include <SDS011.h>
-// #include <SoftwareSerial.h>
+
+
 #include <ESP8266WiFi.h>
 #include "ThingSpeak.h"
-
-
-
 #include <ESP8266HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <WiFiClient.h>
 
 WiFiClient client;
 unsigned long myChannelNumber = 1519907;
 const char * myWriteAPIKey = "F2YBHTZO9IZP34OO";
-
 
 
 char * ssid  = "NANDU 3RD FLOOR-B-4G";
@@ -54,17 +50,115 @@ DHT dht(DHTPIN, DHTTYPE);
 String serverName = "http://3.23.18.168:5000/records/";
 
 
+//oneM2M variables
+//String CSE_IP      = "esw-onem2m.iiit.ac.in";  
+const char *host = "esw-onem2m.iiit.ac.in";
+
+int WIFI_DELAY  = 100; //ms
+
+// oneM2M : CSE params
+int   CSE_HTTP_PORT = 443;
+String CSE_NAME    = "in-name";
+String CSE_M2M_ORIGIN  = "r6QdGr7YEB:laM0VCTe6P";
 
 
+const char fingerprint[] PROGMEM = "10 3D D5 4E B1 47 DB 4B 5C B0 89 08 41 A7 A4 14 87 10 7F E8";
+
+// oneM2M : resources' params
+int TY_AE  = 2;
+int TY_CNT = 3;
+int TY_CI  = 4;
+int TY_SUB = 23;
+
+// HTTP constants
+int LOCAL_PORT = 9999;
+char* HTTP_CREATED = "HTTP/1.1 201 Created";
+char* HTTP_OK    = "HTTP/1.1 200 OK\r\n";
+int REQUEST_TIME_OUT = 5000; //ms
+
+int SERIAL_SPEED  = 9600;
+
+String doPOST(String url, int ty, String rep) {
+  
+
+  /* Serial.println(url);
+  Serial.println(ty);
+  Serial.println(rep); */
+  //return "p";  
+  String postRequest = String() + "POST " + url + " HTTP/1.1\r\n" +
+                       "Host: " + host + ":" + CSE_HTTP_PORT + "\r\n" +
+                       "X-M2M-Origin: " + CSE_M2M_ORIGIN + "\r\n" +
+                       "Content-Type: application/json;ty=" + ty + "\r\n" +
+                       "Content-Length: " + rep.length() + "\r\n"
+                       "Connection: close\r\n\n" +
+                       rep;
+
+  // Connect to the CSE address
+
+ // Serial.println("connecting to " + CSE_IP + ":" + CSE_HTTP_PORT + " ...");
+  // Get a client
+  WiFiClientSecure httpsClient;
+  
+  httpsClient.setFingerprint(fingerprint);
+  //httpsClient.setTimeout(15000);
+  delay(1000);
+  //httpsClient.setInsecure();
+  Serial.print("HTTPS Connecting");
+  int r=0; //retry counter
+  while((!httpsClient.connect(host, CSE_HTTP_PORT)) && (r < 30)){
+      delay(100);
+      Serial.print(".");
+      r++;
+  }
+  if(r==30) {
+    Serial.println("Connection failed");
+  }
+  else {
+    Serial.println("Connected to web");
+  }
+  
+  // if connection succeeds, we show the request to be send
+
+  //Serial.println(postRequest);
 
 
+  // Send the HTTP POST request
+  httpsClient.print(postRequest);
 
 
+  Serial.println("request sent");  
+  
+  while (httpsClient.connected()) {
+    String line = httpsClient.readStringUntil('\n');
+    if (line == "\r") {
+      Serial.println("headers received");
+      break;
+    }
+  }
+
+  //Serial.println("reply was:");
+  //Serial.println("==========");
+  String line;
+  while(httpsClient.available()){        
+    line = httpsClient.readStringUntil('\n');  //Read Line by Line
+    //Serial.println(line); //Print response
+  }
+  //Serial.println("==========");
+  //Serial.println("closing connection");
+    String stp = "nothing";
+  return stp;
+  
+}
 
 
-
-
-
+String createCI(String ae, String cnt1, String cnt2, String ciContent) {
+  String ciRepresentation =
+    "{\"m2m:cin\": {"
+    "\"con\":\"" + ciContent + "\""
+    "}}";
+  
+  return doPOST("/" + CSE_NAME + "/" + ae + "/" + cnt1 + "/" + cnt2, TY_CI, ciRepresentation);
+}
 
 
 void initsds()
@@ -187,15 +281,7 @@ void initmhz14(){
   delay(10000);
 
 }
-
-
 void mhz14out(){
-  
-   
-
-  
-
-
   byte addArray[] = {0xFF, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79};
   char dataValue[9];
   
@@ -266,11 +352,26 @@ void setup() {
 initsgp30();
   initmhz14();
   initdht22();
+
+  WiFi.begin(ssid, password);     //Connect to your WiFi router
+  Serial.println("");
+
+  Serial.print("Connecting");
+  // Wait for connection
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  //If connection successful show IP address in serial monitor
+  Serial.println("");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
 }
 
 void loop() {
    
-     if(WiFi.status() != WL_CONNECTED){
+    if(WiFi.status() != WL_CONNECTED){
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
       WiFi.begin(ssid, password);  // Connect to WPA/WPA2 network. Change this line if using open or WEP network
@@ -287,17 +388,12 @@ void loop() {
   digitalWrite(D0,LOW);
 
   
-  
   dht22out();
   Serial.println();
-
-   sdsout();
+  sdsout();
   Serial.println();
-
-
   sgpout();
   Serial.println();
-
   mhz14out();
   Serial.println(); 
   
@@ -310,12 +406,6 @@ void loop() {
   ThingSpeak.setField(6,tvoc);
   ThingSpeak.setField(7,eco2);
   ThingSpeak.setField(8,h2);
-
-
-
-  
-
-
 
    HTTPClient http;
    http.begin(client, serverName);
@@ -335,7 +425,7 @@ void loop() {
 
    String requestBody;
 
-   serializeJson(doc,requestBody);
+    serializeJson(doc,requestBody);
   int httpResponseCode = http.POST(requestBody);
   if(httpResponseCode>0){
       String response = http.getString();                       
@@ -344,7 +434,7 @@ void loop() {
     }
   else {
      Serial.printf("Error occurred while sending HTTP POST: %s\n", http.getString());
-  }
+  } 
 
 
   int st= ThingSpeak.writeFields(myChannelNumber,myWriteAPIKey);
@@ -353,8 +443,19 @@ void loop() {
   }
   else{
     Serial.println("Problem updating channel. HTTP error code " + String(st));
-  }
-  
+  } 
+
+  String str = String("Hyd")+String(temp)
+              +String(",")+String(hum)
+              +String(",")+String(pm25)
+              +String(",")+String(pm10)
+              +String(",")+String(co2)
+              +String(",")+String(tvoc)
+              +String(",")+String(eco2)
+              +String(",")+String(h2);
+
+
+  createCI("Team-30","Node-1","Data",str);
   delay(delay_time); //thingspeak limit
   
 }
