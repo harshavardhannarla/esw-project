@@ -1,3 +1,5 @@
+#include <ArduinoJson.h>
+
 #include <DHT.h>
 #include <Adafruit_BME280.h>
 #include <Adafruit_Sensor.h>
@@ -8,6 +10,11 @@
 // #include <SoftwareSerial.h>
 #include <ESP8266WiFi.h>
 #include "ThingSpeak.h"
+
+
+
+#include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
 
 WiFiClient client;
 unsigned long myChannelNumber = 1519907;
@@ -39,6 +46,25 @@ int delay_time=60000;
 #define DHTTYPE DHT22
 
 DHT dht(DHTPIN, DHTTYPE);
+
+
+
+
+
+String serverName = "http://3.23.18.168:5000/records/";
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 void initsds()
@@ -284,6 +310,42 @@ void loop() {
   ThingSpeak.setField(6,tvoc);
   ThingSpeak.setField(7,eco2);
   ThingSpeak.setField(8,h2);
+
+
+
+  
+
+
+
+   HTTPClient http;
+   http.begin(client, serverName);
+   http.addHeader("Content-Type", "application/json");
+
+   DynamicJsonDocument doc(1024);
+
+   doc["location"]="Hyd";
+   doc["temp"]=temp;
+   doc["humidity"]=hum;
+   doc["pm25"]=pm25;
+   doc["pm10"]=pm10;
+   doc["co2"]=co2;
+   doc["tvoc"]=tvoc;
+   doc["eco2"]=eco2;
+   doc["h2"]=h2;
+
+   String requestBody;
+
+   serializeJson(doc,requestBody);
+  int httpResponseCode = http.POST(requestBody);
+  if(httpResponseCode>0){
+      String response = http.getString();                       
+      Serial.println(httpResponseCode);   
+      Serial.println(response); 
+    }
+  else {
+     Serial.printf("Error occurred while sending HTTP POST: %s\n", http.getString());
+  }
+
 
   int st= ThingSpeak.writeFields(myChannelNumber,myWriteAPIKey);
   if(st == 200){
