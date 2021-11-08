@@ -4,7 +4,7 @@ const router = express.Router();
 const Record = require('../models/Record');
 
 router.get('/',async(req,res)=>{
-    try{ console.log(new Date(req.query.start),new Date( req.query.end));
+    try{ //console.log(new Date(req.query.start),new Date( req.query.end));
     Record.find({
         'time':{ 
             $gte: new Date(req.query.start),
