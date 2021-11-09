@@ -8,6 +8,8 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 
+import Stack from "@mui/material/Stack";
+
 const colorData = [
   {
     fill: false,
@@ -120,32 +122,36 @@ export default function Graph(props) {
   };
 
   return (
-    <Container fixWidth>
+    <Container>
       <div className="header">
-        <h1 className="title">Chart</h1>
+        <h1 className="title">Statistics</h1>
         <div className="links"></div>
       </div>
-      <Line data={allData} options={options} />
-      <FormControl component="fieldset">
-        <FormLabel component="legend">
-          Graph Attribute: {allData.datasets[0].label}
-        </FormLabel>
-        <RadioGroup
-          row
-          aria-label="gender"
-          name="controlled-radio-buttons-group"
-          value={option}
-          onChange={handleRadio}
-        >
-          {choices.map((choice) => (
-            <FormControlLabel
-              value={choice}
-              control={<Radio />}
-              label={choice}
-            />
-          ))}
-        </RadioGroup>
-      </FormControl>
+      <Stack spacing={2}>
+        <Line data={allData} options={options} />
+        <Container>
+          <FormControl component="fieldset">
+            <FormLabel component="legend">
+              Graph Attribute: {allData.datasets[0].label}
+            </FormLabel>
+            <RadioGroup
+              row
+              aria-label="gender"
+              name="controlled-radio-buttons-group"
+              value={option}
+              onChange={handleRadio}
+            >
+              {choices.map((choice) => (
+                <FormControlLabel
+                  value={choice}
+                  control={<Radio />}
+                  label={choice}
+                />
+              ))}
+            </RadioGroup>
+          </FormControl>
+        </Container>
+      </Stack>
     </Container>
   );
 }

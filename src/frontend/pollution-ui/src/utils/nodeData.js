@@ -1,10 +1,19 @@
-async function predictionData(channelId) {
+async function realtimeData(channelId) {
   // array of objects
-  let table = [];
+  let table = {
+    temperature: 20,
+    humidity: 10,
+    pm2: 100,
+    pm10: 200,
+    co2: 3000,
+    tvoc: 100,
+    eco2: 50,
+    h2: 100,
+  };
   return table;
 }
 
-async function allData(channelId) {
+async function allData(channelId, fromDate, toDate) {
   let table = {
     created_at: [1636099952084, 1636099952089, 1636099952094],
     temperature: [20, 25, 24],
@@ -19,10 +28,9 @@ async function allData(channelId) {
   return table;
 }
 
-async function avgData(channelId) {
+async function avgData(table) {
   const average = (arr) => arr.reduce((p, c) => p + c, 0) / arr.length;
   let averageValues = {};
-  const table = await allData(channelId);
   for (const attr in table) {
     if (attr === "created_at") continue;
     averageValues[attr] = average(table[attr]);
@@ -44,4 +52,4 @@ async function attrData(channelId) {
   return attributes;
 }
 
-export { allData, avgData, predictionData, attrData };
+export { allData, avgData, realtimeData, attrData };

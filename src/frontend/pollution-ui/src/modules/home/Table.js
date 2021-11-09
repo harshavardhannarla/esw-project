@@ -27,12 +27,6 @@ const choices = [
   "h2",
 ];
 
-const columns = [
-  { field: "attribute", headerName: "Attribute", width: 180 },
-  { field: "value", headerName: "Value", width: 180 },
-  { field: "recc", headerName: "Reccommended Value", width: 180 },
-];
-
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
     backgroundColor: theme.palette.common.black,
