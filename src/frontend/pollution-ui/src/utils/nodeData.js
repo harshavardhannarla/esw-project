@@ -14,6 +14,7 @@ async function realtimeData(channelId) {
 }
 
 async function allData(channelId, fromDate, toDate) {
+  console.log(fromDate, toDate);
   let table = {
     created_at: [1636099952084, 1636099952089, 1636099952094],
     temperature: [20, 25, 24],

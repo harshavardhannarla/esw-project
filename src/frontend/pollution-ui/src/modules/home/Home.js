@@ -14,12 +14,19 @@ import AdapterDateFns from "@mui/lab/AdapterDateFns";
 import Stack from "@mui/material/Stack";
 import Button from "@mui/material/Button";
 
+import Box from "@mui/material/Box";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import FormControl from "@mui/material/FormControl";
+import Select from "@mui/material/Select";
+
 export default function CustomPaginationActionsTable() {
   const [data, setData] = useState({});
   const [averageData, setAverageData] = useState({});
   const [attributeData, setAttributeData] = useState({});
   const [tempFlag, setTempFlag] = useState(false);
   const [channelId, setChannelId] = useState("");
+  const [timeChoice, setTimeChoice] = useState(0);
 
   const [fromDate, setFromDate] = useState(new Date());
   const [toDate, setToDate] = useState(new Date());
@@ -42,11 +49,13 @@ export default function CustomPaginationActionsTable() {
   });
 
   const handleButton = async () => {
-    const table = await allData(
-      channelId,
-      fromDate.getTime(),
-      toDate.getTime()
-    );
+    let table = {};
+    if (timeChoice == 0) {
+      table = await allData(channelId, fromDate.getTime(), toDate.getTime());
+    } else {
+      const currentTime = new Date().getTime();
+      table = await allData(channelId, currentTime - timeChoice, currentTime);
+    }
     setData(table);
     const averageTable = await avgData(
       channelId,
@@ -59,29 +68,52 @@ export default function CustomPaginationActionsTable() {
     setTempFlag(true);
   };
 
+  const updateDate = (updateFunc, value) => {
+    updateFunc(value);
+    setTimeChoice(0);
+  };
+
   return (
     <Container fixWidth>
       <Realtime />
       <Graph allData={data} avgData={averageData} />
       <Container fixWidth sx={{ padding: 2 }}>
-        <h1 className="title">Timeline</h1>
-        <Stack spacing={5} direction="row">
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <DesktopDatePicker
-              label="From Date"
-              inputFormat="MM/dd/yyyy"
-              value={fromDate}
-              renderInput={(params) => <TextField {...params} />}
-              onChange={setFromDate}
-            />
-            <DesktopDatePicker
-              label="To Date"
-              inputFormat="MM/dd/yyyy"
-              value={fromDate}
-              renderInput={(params) => <TextField {...params} />}
-              onChange={setToDate}
-            />
-          </LocalizationProvider>
+        <h1 className="title">Pick Date/Time</h1>
+        <Stack spacing={5}>
+          <Stack spacing={5} direction="row">
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DesktopDatePicker
+                label="From Date"
+                inputFormat="MM/dd/yyyy"
+                value={fromDate}
+                renderInput={(params) => <TextField {...params} />}
+                onChange={(val) => {
+                  updateDate(setFromDate, val);
+                }}
+              />
+              <DesktopDatePicker
+                label="To Date"
+                inputFormat="MM/dd/yyyy"
+                value={fromDate}
+                renderInput={(params) => <TextField {...params} />}
+                onChange={(val) => {
+                  updateDate(setToDate, val);
+                }}
+              />
+            </LocalizationProvider>
+          </Stack>
+          <Select
+            labelId="demo-simple-select-label"
+            id="demo-simple-select"
+            value={timeChoice}
+            label="Time based plot"
+            onChange={(event) => setTimeChoice(event.target.value)}
+          >
+            <MenuItem value={0}>Pick</MenuItem>
+            <MenuItem value={3600}>One hour</MenuItem>
+            <MenuItem value={3600 * 8}>Eight hours</MenuItem>
+            <MenuItem value={3600 * 24}>One day</MenuItem>
+          </Select>
           <Button variant="contained" onClick={handleButton}>
             Submit
           </Button>
