@@ -3,6 +3,9 @@ import completeConf from "./config.json";
 import dateFormat, { masks } from "dateformat";
 
 const config = completeConf["Hyd"];
+const average = (arr) => arr.reduce((p, c) => p + c, 0) / arr.length;
+const min = (arr) => arr.reduce((p, c) => (p < c ? p : c));
+const max = (arr) => arr.reduce((p, c) => (p > c ? p : c));
 
 function cleanData(reqData) {
   const fieldList = getFields(reqData);
@@ -17,8 +20,15 @@ function cleanData(reqData) {
       table[field.name].push(entry[field.field]);
     });
   });
+
   fieldList.map((field) => {
     table[field.name] = table[field.name].map((x) => parseFloat(x));
+
+    const averageValue = average(table[field.name].filter((x) => x >= 0));
+    table[field.name] = table[field.name].map((x) => {
+      if (x >= 0) return x;
+      else return averageValue;
+    });
   });
 
   table["created_at"] = table["created_at"].map((x) => {
@@ -34,17 +44,12 @@ async function realtimeData(channelId) {
   const reqData = (await axios.get(url)).data;
   let table = cleanData(reqData);
   delete table["created_at"];
+  Object.keys(table).map((x) => {
+    if (table[x][0] == -1) {
+      table[x][0] = "-";
+    }
+  });
   // array of objects
-  // table = {
-  //   temperature: 20,
-  //   humidity: 10,
-  //   pm2: 100,
-  //   pm10: 200,
-  //   co2: 3000,
-  //   tvoc: 100,
-  //   eco2: 50,
-  //   h2: 100,
-  // };
   return table;
 }
 
@@ -82,7 +87,6 @@ async function allData(channelId, fromDate, toDate) {
 }
 
 async function avgData(table) {
-  const average = (arr) => arr.reduce((p, c) => p + c, 0) / arr.length;
   let averageValues = {};
   for (const attr in table) {
     if (attr === "created_at") continue;
@@ -92,10 +96,6 @@ async function avgData(table) {
 }
 
 async function attrData(table) {
-  const average = (arr) => arr.reduce((p, c) => p + c, 0) / arr.length;
-  const min = (arr) => arr.reduce((p, c) => (p < c ? p : c));
-  const max = (arr) => arr.reduce((p, c) => (p > c ? p : c));
-
   let averageValues = {};
   for (const attr in table) {
     if (attr === "created_at") continue;
