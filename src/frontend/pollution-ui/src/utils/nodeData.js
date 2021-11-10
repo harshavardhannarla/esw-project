@@ -1,5 +1,6 @@
 import axios from "axios";
 import completeConf from "./config.json";
+import dateFormat, { masks } from "dateformat";
 
 const config = completeConf["Hyd"];
 
@@ -61,23 +62,23 @@ function getFields(data) {
 }
 
 async function allData(channelId, fromDate, toDate) {
-  const url = `https://api.thingspeak.com/channels/${
-    config["channelId"]
-  }/feeds.json?api_key=${config["readAPIKey"]}&results=${10}`;
-  const reqData = (await axios.get(url)).data;
-  let table = cleanData(reqData);
-  // table = {
-  //   created_at: [1636099952084, 1636099952089, 1636099952094],
-  //   temperature: [20, 25, 24],
-  //   humidity: [10, 20, 12],
-  //   pm2: [100, 100, 100],
-  //   pm10: [200, 200, 200],
-  //   co2: [3000, 3000, 2900],
-  //   tvoc: [100, 100, 100],
-  //   eco2: [50, 50, 50],
-  //   h2: [100, 100, 100],
-  // };
-  return table;
+  if (fromDate == 0) {
+    const url = `https://api.thingspeak.com/channels/${
+      config["channelId"]
+    }/feeds.json?api_key=${config["readAPIKey"]}&results=${10}`;
+    const reqData = (await axios.get(url)).data;
+    return cleanData(reqData);
+  } else {
+    let from = new Date(fromDate);
+    let to = new Date(toDate);
+    from = dateFormat(from, "yyyy-mm-dd HH:MM:ss");
+    to = dateFormat(to, "yyyy-mm-dd HH:MM:ss");
+
+    const url = `https://api.thingspeak.com/channels/${config["channelId"]}/feeds.json?api_key=${config["readAPIKey"]}&start=${from}&end=${to}`;
+    const reqData = (await axios.get(url)).data;
+    let table = cleanData(reqData);
+    return table;
+  }
 }
 
 async function avgData(table) {
@@ -90,18 +91,21 @@ async function avgData(table) {
   return averageValues;
 }
 
-async function attrData(channelId) {
-  const attributes = {
-    temperature: { average: [1, 0], max: [1, 0], min: [0, 1] },
-    humidity: { average: [1, 0], max: [1, 0], min: [0, 1] },
-    pm2: { average: [1, 0], max: [1, 0], min: [0, 1] },
-    pm10: { average: [1, 0], max: [1, 0], min: [0, 1] },
-    co2: { average: [1, 0], max: [1, 0], min: [0, 1] },
-    tvoc: { average: [1, 0], max: [1, 0], min: [0, 1] },
-    eco2: { average: [1, 0], max: [1, 0], min: [0, 1] },
-    h2: { average: [1, 0], max: [1, 0], min: [0, 1] },
-  };
-  return attributes;
+async function attrData(table) {
+  const average = (arr) => arr.reduce((p, c) => p + c, 0) / arr.length;
+  const min = (arr) => arr.reduce((p, c) => (p < c ? p : c));
+  const max = (arr) => arr.reduce((p, c) => (p > c ? p : c));
+
+  let averageValues = {};
+  for (const attr in table) {
+    if (attr === "created_at") continue;
+    averageValues[attr] = {
+      average: average(table[attr]),
+      max: max(table[attr]),
+      min: min(table[attr]),
+    };
+  }
+  return averageValues;
 }
 
 export { allData, avgData, realtimeData, attrData };

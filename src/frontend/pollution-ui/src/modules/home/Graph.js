@@ -62,41 +62,8 @@ const choices = [
 
 export default function Graph(props) {
   const [allData, setAllData] = useState(dummyData);
-  const [flag, setFlag] = useState(false);
 
   const [option, setOption] = useState(choices[0]);
-
-  useEffect(() => {
-    if (
-      !flag &&
-      typeof props.allData.co2 !== "undefined" &&
-      typeof props.avgData.co2 !== "undefined"
-    ) {
-      const reqData = {
-        ...dummyData,
-        labels: props.allData["created_at"].map((e) =>
-          new Date(e).toUTCString()
-        ),
-        datasets: [
-          {
-            ...colorData[0],
-            label: option,
-            data: props.allData[option],
-          },
-          {
-            ...colorData[1],
-            label: "Average " + option,
-            data: Array(props.allData[option].length).fill(
-              props.avgData[option]
-            ),
-          },
-        ],
-      };
-      console.log(props.avgData);
-      setAllData(reqData);
-      setFlag(true);
-    }
-  });
 
   const handleRadio = (event) => {
     setOption(event.target.value);
