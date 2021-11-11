@@ -12,17 +12,6 @@ import Paper from "@mui/material/Paper";
 
 import { realtimeData } from "../../utils/nodeData.js";
 
-const choices = [
-  "temperature",
-  "humidity",
-  "pm2",
-  "pm10",
-  "co2",
-  "tvoc",
-  "eco2",
-  "h2",
-];
-
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
     backgroundColor: theme.palette.common.black,

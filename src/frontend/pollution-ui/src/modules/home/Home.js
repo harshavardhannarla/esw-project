@@ -69,16 +69,19 @@ const dummyData = {
     },
   ],
 };
-const choices = [
-  "temperature",
-  "humidity",
-  "pm2.5",
-  "pm10",
-  "co2",
-  "tvoc",
-  "eco2",
-  "h2",
-];
+const choices = {
+  Hyd: [
+    "temperature",
+    "humidity",
+    "pm2.5",
+    "pm10",
+    "co2",
+    "tvoc",
+    "eco2",
+    "h2",
+  ],
+  Del: ["Temp", "Humidity", "Pm25", "Pm10", "Co2", "voc_index"],
+};
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
     backgroundColor: theme.palette.common.black,
@@ -110,8 +113,10 @@ const style = {
 
 export default function CustomPaginationActionsTable() {
   const [tempFlag, setTempFlag] = useState(false);
-  const [channelId, setChannelId] = useState("");
   const [timeChoice, setTimeChoice] = useState(0);
+
+  const [channelId, setChannelId] = useState("");
+  const [city, setCity] = useState("Hyd");
 
   const [attributeData, setAttributeData] = useState({});
   const [averageData, setAverageData] = useState({});
@@ -121,19 +126,26 @@ export default function CustomPaginationActionsTable() {
   const [toDate, setToDate] = useState(new Date());
 
   /* graph */
-  const [graphOption, setGraphOption] = useState(choices[0]);
+  const [graphOption, setGraphOption] = useState("");
   const [graphData, setGraphData] = useState(dummyData);
 
   /* table */
-  const [tableOption, setTableOption] = useState(choices[0]);
+  const [tableOption, setTableOption] = useState("");
   const [tableData, setTableData] = useState([]);
 
   useEffect(() => {
-    const channel = localStorage.getItem("channelId");
-    setChannelId(channel);
     if (!tempFlag) {
       async function fetchData() {
-        const table = await allData(channelId, 0, 0);
+        setTempFlag(true);
+        const channel = localStorage.getItem("channelId");
+        setChannelId(channel);
+        const city_val = localStorage.getItem("city");
+        setCity(city_val);
+        const choice = choices[city_val][0];
+        setGraphOption(choice);
+        setTableOption(choice);
+
+        const table = await allData(channel, 0, 0);
         setData(table);
         const reqData = {
           ...dummyData,
@@ -141,15 +153,13 @@ export default function CustomPaginationActionsTable() {
           datasets: [
             {
               ...colorData[0],
-              label: graphOption,
-              data: table[graphOption],
+              label: choice,
+              data: table[choice],
             },
             {
               ...colorData[1],
-              label: "Average " + graphOption,
-              data: Array(table[graphOption].length).fill(
-                averageData[graphOption]
-              ),
+              label: "Average " + choice,
+              data: Array(table[choice].length).fill(averageData[choice]),
             },
           ],
         };
@@ -160,15 +170,15 @@ export default function CustomPaginationActionsTable() {
 
         const attrTable = await attrData(table);
         setAttributeData(attrTable);
-        if (typeof attributeData[tableOption] != "undefined") {
-          const table = Object.keys(attributeData[tableOption]).map((x) => {
+
+        if (typeof attrTable[choice] != "undefined") {
+          const tableData = Object.keys(attrTable[choice]).map((x) => {
             return {
               attribute: x,
-              value: attributeData[tableOption][x],
+              value: attrTable[choice][x],
             };
           });
-          setTableData(table);
-          setTempFlag(true);
+          setTableData(tableData);
         }
       }
       fetchData();
@@ -284,7 +294,7 @@ export default function CustomPaginationActionsTable() {
                   handleGraphRadio(event.target.value);
                 }}
               >
-                {choices.map((choice) => (
+                {choices[city].map((choice) => (
                   <FormControlLabel
                     value={choice}
                     control={<Radio />}
@@ -374,7 +384,7 @@ export default function CustomPaginationActionsTable() {
               handleTableRadio(event.target.value);
             }}
           >
-            {choices.map((choice) => (
+            {choices[city].map((choice) => (
               <FormControlLabel
                 value={choice}
                 control={<Radio />}

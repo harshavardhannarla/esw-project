@@ -21,7 +21,7 @@ const Login = () => {
       let res = await login(channelId);
       if (res.data.success) {
         localStorage.setItem("channelId", channelId);
-        setChannelId("");
+        localStorage.setItem("city", res.data.city);
         history.push("/home/");
       } else if (res.data.channelId) {
         alert(res.data.channelId);
@@ -70,6 +70,10 @@ const Login = () => {
               label="Channel ID"
               name="channelId"
               autoComplete="channelId"
+              value={channelId}
+              onChange={(event) => {
+                setChannelId(event.target.value);
+              }}
               autoFocus
             />
             <Button

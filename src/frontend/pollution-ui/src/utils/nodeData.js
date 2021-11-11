@@ -2,16 +2,14 @@ import axios from "axios";
 import completeConf from "./config.json";
 import dateFormat, { masks } from "dateformat";
 
-const config = completeConf["Hyd"];
-const average = (arr) => arr.reduce((p, c) => p + c, 0) / arr.length;
-const min = (arr) => arr.reduce((p, c) => (p < c ? p : c));
-const max = (arr) => arr.reduce((p, c) => (p > c ? p : c));
+const average = (arr) =>
+  typeof arr == "undefined" ? "-" : arr.reduce((p, c) => p + c, 0) / arr.length;
 
 function cleanData(reqData) {
   const fieldList = getFields(reqData);
 
   let table = { created_at: [] };
-  fieldList.map((x, i) => {
+  fieldList.map((x) => {
     table[x.name] = [];
   });
   reqData.feeds.map((entry) => {
@@ -25,10 +23,14 @@ function cleanData(reqData) {
     table[field.name] = table[field.name].map((x) => parseFloat(x));
 
     const averageValue = average(table[field.name].filter((x) => x >= 0));
-    table[field.name] = table[field.name].map((x) => {
-      if (x >= 0) return x;
-      else return averageValue;
-    });
+    if (typeof table[field.name] != "undefined") {
+      table[field.name] = table[field.name].map((x) => {
+        if (x >= 0) return x;
+        else return averageValue;
+      });
+    } else {
+      table[field.name] = ["-"];
+    }
   });
 
   table["created_at"] = table["created_at"].map((x) => {
@@ -37,20 +39,12 @@ function cleanData(reqData) {
   return table;
 }
 
-async function realtimeData(channelId) {
-  const url = `https://api.thingspeak.com/channels/${
-    config["channelId"]
-  }/feeds.json?api_key=${config["readAPIKey"]}&results=${1}`;
-  const reqData = (await axios.get(url)).data;
-  let table = cleanData(reqData);
-  delete table["created_at"];
-  Object.keys(table).map((x) => {
-    if (table[x][0] == -1) {
-      table[x][0] = "-";
-    }
+function getCity(channelId) {
+  let city = "";
+  Object.keys(completeConf).map((x) => {
+    if (completeConf[x]["channelId"] == channelId) city = x;
   });
-  // array of objects
-  return table;
+  return city;
 }
 
 function getFields(data) {
@@ -65,21 +59,39 @@ function getFields(data) {
   });
   return attributes;
 }
+async function realtimeData(channelId) {
+  const city = getCity(channelId);
+  const url = `https://api.thingspeak.com/channels/${
+    completeConf[city]["channelId"]
+  }/feeds.json?api_key=${completeConf[city]["readAPIKey"]}&results=${1}`;
+  const reqData = (await axios.get(url)).data;
+  let table = cleanData(reqData);
+  delete table["created_at"];
+  Object.keys(table).map((x) => {
+    if (table[x][0] == -1) {
+      table[x][0] = "-";
+    }
+  });
+  // array of objects
+  return table;
+}
 
 async function allData(channelId, fromDate, toDate) {
+  const city = getCity(channelId);
   if (fromDate == 0) {
     const url = `https://api.thingspeak.com/channels/${
-      config["channelId"]
-    }/feeds.json?api_key=${config["readAPIKey"]}&results=${10}`;
+      completeConf[city]["channelId"]
+    }/feeds.json?api_key=${completeConf[city]["readAPIKey"]}&results=${10}`;
     const reqData = (await axios.get(url)).data;
-    return cleanData(reqData);
+    const cleaned = cleanData(reqData);
+    return cleaned;
   } else {
     let from = new Date(fromDate);
     let to = new Date(toDate);
     from = dateFormat(from, "yyyy-mm-dd HH:MM:ss");
     to = dateFormat(to, "yyyy-mm-dd HH:MM:ss");
 
-    const url = `https://api.thingspeak.com/channels/${config["channelId"]}/feeds.json?api_key=${config["readAPIKey"]}&start=${from}&end=${to}`;
+    const url = `https://api.thingspeak.com/channels/${completeConf[city]["channelId"]}/feeds.json?api_key=${completeConf[city]["readAPIKey"]}&start=${from}&end=${to}`;
     const reqData = (await axios.get(url)).data;
     let table = cleanData(reqData);
     return table;
@@ -96,16 +108,17 @@ async function avgData(table) {
 }
 
 async function attrData(table) {
-  let averageValues = {};
+  let values = {};
   for (const attr in table) {
     if (attr === "created_at") continue;
-    averageValues[attr] = {
+    console.log(Math.max(table[attr]), table[attr]);
+    values[attr] = {
       average: average(table[attr]),
-      max: max(table[attr]),
-      min: min(table[attr]),
+      max: Math.max(...table[attr]),
+      min: Math.min(...table[attr]),
     };
   }
-  return averageValues;
+  return values;
 }
 
 export { allData, avgData, realtimeData, attrData };
