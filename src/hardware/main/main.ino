@@ -13,6 +13,76 @@
 #include <WiFiClientSecure.h>
 #include <WiFiClient.h>
 
+#include "AES.h"
+#include "base64.h"
+
+
+  
+#include "sha256.h"
+#include <string>
+
+AES aes;
+
+byte key[] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+
+byte my_iv[N_BLOCK] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+String msg; //create message string
+String iv4;
+
+
+uint8_t getrnd() {
+    uint8_t really_random = *(volatile uint8_t *)0x3FF20E44;
+    return really_random;
+}
+
+// Generate a random initialization vector
+void gen_iv(byte  *iv) {
+    for (int i = 0 ; i < N_BLOCK ; i++ ) {
+        iv[i]= (byte) getrnd();
+    }
+}
+
+String testAES128()  {
+
+    char b64data[200];
+    byte cipher[1000];
+    byte iv [N_BLOCK] ;
+    
+    //Serial.println("Let's encrypt:");
+    
+    aes.set_key( key , sizeof(key));  // Get the globally defined key
+    gen_iv( my_iv );                  // Generate a random IV
+    
+    // Print the IV
+    b64_encode( b64data, (char *)my_iv, N_BLOCK);
+    //Serial.println(" IV b64: " + String(b64data));
+    iv4 = String(b64data);
+       
+    //Serial.println(" Mensagem: " + msg );
+ 
+    int b64len = b64_encode(b64data, (char *)msg.c_str(),msg.length());
+    //Serial.println (" Message in B64: " + String(b64data) );
+    //Serial.println (" The lenght is:  " + String(b64len) );
+    
+    // For sanity check purpose
+    //b64_decode( decoded , b64data , b64len );
+    //Serial.println("Decoded: " + String(decoded));
+    
+    // Encrypt! With AES128, our key and IV, CBC and pkcs7 padding    
+    aes.do_aes_encrypt((byte *)b64data, b64len , cipher, key, 128, my_iv);
+    
+    //Serial.println("Encryption done!");
+    
+    //Serial.println("Cipher size: " + String(aes.get_size()));
+    
+    b64_encode(b64data, (char *)cipher, aes.get_size() );
+    //Serial.println ("Encrypted data in b64: " + String(b64data) );
+      
+    //Serial.println("Done...");
+
+    return String(b64data);
+}
+
 WiFiClient client;
 unsigned long myChannelNumber = 1519907;
 const char * myWriteAPIKey = "F2YBHTZO9IZP34OO";
@@ -390,11 +460,11 @@ void loop() {
   
   dht22out();
   Serial.println();
-  sdsout();
+ sdsout();
   Serial.println();
   sgpout();
   Serial.println();
-  mhz14out();
+ mhz14out();
   Serial.println(); 
   
   
@@ -426,14 +496,40 @@ void loop() {
    String requestBody;
 
     serializeJson(doc,requestBody);
-  int httpResponseCode = http.POST(requestBody);
+    msg = requestBody;
+    requestBody = testAES128();
+    
+    DynamicJsonDocument poc(1024);
+    poc["payLoad"]=requestBody;
+    poc["iv4"]=iv4;
+
+    uint8_t *hash;
+
+    Sha256.init();
+    Sha256.print(requestBody);
+    hash = Sha256.result();
+  
+
+  
+  poc["shaVal"]=String((char*)hash);
+
+    String paystr;
+    serializeJson(poc,paystr);
+       
+  int httpResponseCode = http.POST(paystr);
   if(httpResponseCode>0){
       String response = http.getString();                       
       Serial.println(httpResponseCode);   
       Serial.println(response); 
     }
+  else if(httpResponseCode == -11)
+  {
+
+  }
   else {
+    Serial.println(httpResponseCode);
      Serial.printf("Error occurred while sending HTTP POST: %s\n", http.getString());
+     Serial.println(paystr.length());
   } 
 
 
@@ -443,7 +539,7 @@ void loop() {
   }
   else{
     Serial.println("Problem updating channel. HTTP error code " + String(st));
-  } 
+  }
 
   String str = String("Hyd")+String(temp)
               +String(",")+String(hum)
