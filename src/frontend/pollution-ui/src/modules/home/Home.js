@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import Container from "@mui/material/Container";
 
-import Realtime from "./Realtime";
-
-import { allData, avgData, attrData } from "../../utils/nodeData.js";
+import {
+  allData,
+  avgData,
+  attrData,
+  realtimeData,
+} from "../../utils/nodeData.js";
 
 import DesktopDatePicker from "@mui/lab/DesktopDatePicker";
 import TextField from "@mui/material/TextField";
@@ -30,6 +33,9 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 
 import { Line } from "react-chartjs-2";
+import { getId } from "../../utils/login.js";
+
+const cities = ["Hyd", "Del"];
 
 const colorData = [
   {
@@ -115,7 +121,7 @@ export default function CustomPaginationActionsTable() {
   const [tempFlag, setTempFlag] = useState(false);
   const [timeChoice, setTimeChoice] = useState(0);
 
-  const [channelId, setChannelId] = useState("");
+  const [channelId, setChannelId] = useState("1519907");
   const [city, setCity] = useState("Hyd");
 
   const [attributeData, setAttributeData] = useState({});
@@ -132,54 +138,75 @@ export default function CustomPaginationActionsTable() {
   /* table */
   const [tableOption, setTableOption] = useState("");
   const [tableData, setTableData] = useState([]);
+  /* Real time data */
+  const [realData, setRealData] = useState([]);
+
+  const setRealTime = async (channel) => {
+    const table = await realtimeData(channel);
+    const tableData = Object.keys(table).map((x, i) => {
+      return {
+        attribute: x,
+        value: table[x],
+      };
+    });
+    setRealData(tableData);
+  };
+
+  const setGraph = (choice, table) => {
+    setGraphOption(choice);
+    setData(table);
+    const reqData = {
+      ...dummyData,
+      labels: table["created_at"].map((e) => new Date(e).toUTCString()),
+      datasets: [
+        {
+          ...colorData[0],
+          label: choice,
+          data: table[choice],
+        },
+        {
+          ...colorData[1],
+          label: "Average " + choice,
+          data:
+            typeof table[choice] == "undefined"
+              ? []
+              : Array(table[choice].length).fill(averageData[choice]),
+        },
+      ],
+    };
+    setGraphData(reqData);
+  };
+
+  const setTableRadio = (choice, attrTable) => {
+    setAttributeData(attrTable);
+    const tableData = Object.keys(attrTable[choice]).map((x) => {
+      return {
+        attribute: x,
+        value: attrTable[choice][x],
+      };
+    });
+    setTableData(tableData);
+  };
+
+  const setTable = async (choice, table) => {
+    setTableOption(choice);
+    const averageTable = await avgData(table);
+    setAverageData(averageTable);
+
+    const attrTable = await attrData(table);
+    setTableRadio(choice, attrTable);
+  };
 
   useEffect(() => {
     if (!tempFlag) {
       async function fetchData() {
         setTempFlag(true);
-        const channel = localStorage.getItem("channelId");
-        setChannelId(channel);
-        const city_val = localStorage.getItem("city");
-        setCity(city_val);
-        const choice = choices[city_val][0];
-        setGraphOption(choice);
-        setTableOption(choice);
 
-        const table = await allData(channel, 0, 0);
-        setData(table);
-        const reqData = {
-          ...dummyData,
-          labels: table["created_at"].map((e) => new Date(e).toUTCString()),
-          datasets: [
-            {
-              ...colorData[0],
-              label: choice,
-              data: table[choice],
-            },
-            {
-              ...colorData[1],
-              label: "Average " + choice,
-              data: Array(table[choice].length).fill(averageData[choice]),
-            },
-          ],
-        };
-        setGraphData(reqData);
-
-        const averageTable = await avgData(table);
-        setAverageData(averageTable);
-
-        const attrTable = await attrData(table);
-        setAttributeData(attrTable);
-
-        if (typeof attrTable[choice] != "undefined") {
-          const tableData = Object.keys(attrTable[choice]).map((x) => {
-            return {
-              attribute: x,
-              value: attrTable[choice][x],
-            };
-          });
-          setTableData(tableData);
-        }
+        const table = await allData(channelId, 0, 0);
+        const choice = choices[city][0];
+        setGraph(choice, table);
+        await setTable(choice, table);
+        setRealTime(channelId);
       }
       fetchData();
     }
@@ -197,38 +224,8 @@ export default function CustomPaginationActionsTable() {
         currentTime
       );
     }
-    setData(table);
-    const averageTable = await avgData(table);
-    setAverageData(averageTable);
-    const attrTable = await attrData(table);
-    setAttributeData(attrTable);
-    const tableData = Object.keys(attrTable[tableOption]).map((x) => {
-      return {
-        attribute: x,
-        value: attrTable[tableOption][x],
-      };
-    });
-    setTableData(tableData);
-
-    const reqData = {
-      ...dummyData,
-      labels: table["created_at"].map((e) => new Date(e).toUTCString()),
-      datasets: [
-        {
-          ...colorData[0],
-          label: graphOption,
-          data: table[graphOption],
-        },
-        {
-          ...colorData[1],
-          label: "Average " + graphOption,
-          data: Array(table[graphOption].length).fill(
-            averageTable[graphOption]
-          ),
-        },
-      ],
-    };
-    setGraphData(reqData);
+    setTable(tableOption, table);
+    setGraph(tableOption, table);
   };
 
   const updateDate = (updateFunc, value) => {
@@ -238,41 +235,63 @@ export default function CustomPaginationActionsTable() {
 
   const handleTableRadio = (chosen) => {
     setTableOption(chosen);
-    if (typeof attributeData[chosen] != "undefined") {
-      const tableData = Object.keys(attributeData[chosen]).map((x) => {
-        return {
-          attribute: x,
-          value: attributeData[chosen][x],
-        };
-      });
-      setTableData(tableData);
-    }
+    setTableRadio(chosen, attributeData);
   };
 
   const handleGraphRadio = (chosen) => {
-    setGraphOption(chosen);
-    const reqData = {
-      ...dummyData,
-      labels: data["created_at"].map((e) => new Date(e).toUTCString()),
-      datasets: [
-        {
-          ...colorData[0],
-          label: chosen,
-          data: data[chosen],
-        },
-        {
-          ...colorData[1],
-          label: "Average " + chosen,
-          data: Array(data[chosen].length).fill(averageData[chosen]),
-        },
-      ],
-    };
-    setGraphData(reqData);
+    setGraph(chosen, data);
+  };
+
+  const changeCity = async (city) => {
+    setCity(city);
+    const id = await getId(city);
+    const table = await allData(id, 0, 0);
+    const choice = choices[city][0];
+    console.log(table, city, id, choice);
+    setGraph(choice, table);
+    await setTable(choice, table);
+    setRealTime(id);
   };
 
   return (
     <Container fixWidth>
-      <Realtime />
+      <Container>
+        <Select
+          labelId="demo-simple-select-label"
+          id="demo-simple-select"
+          value={city}
+          label="Choose City"
+          onChange={(event) => changeCity(event.target.value)}
+        >
+          <MenuItem value={0}>City</MenuItem>
+          <MenuItem value={"Hyd"}>Hyderabad</MenuItem>
+          <MenuItem value={"Del"}>Delhi</MenuItem>
+        </Select>
+      </Container>
+      <Container fixWidth>
+        <div className="header">
+          <h1 className="title">Realtime values</h1>
+          <div className="links"></div>
+        </div>
+        <TableContainer style={style}>
+          <Table sx={{ minWidth: 200 }} aria-label="customized table">
+            <TableHead>
+              <TableRow>
+                {realData.map((row) => (
+                  <StyledTableCell>{row.attribute}</StyledTableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <StyledTableRow>
+                {realData.map((row) => (
+                  <StyledTableCell align="left">{row.value}</StyledTableCell>
+                ))}
+              </StyledTableRow>
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Container>
       <Container>
         <div className="header">
           <h1 className="title">Statistics</h1>

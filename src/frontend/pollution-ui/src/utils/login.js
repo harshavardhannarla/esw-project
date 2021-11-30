@@ -1,5 +1,10 @@
 import completeConf from "./config.json";
 
+async function getId(city) {
+  let channelId = completeConf[city]["channelId"];
+  return channelId;
+}
+
 async function login(channelId) {
   let city = "";
   if (
@@ -28,4 +33,4 @@ async function login(channelId) {
   }
 }
 
-export { login };
+export { login, getId };
